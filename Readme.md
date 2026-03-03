@@ -178,7 +178,30 @@ metadata:
   name: migrations-scripts
 data:
   001_init.lua: |
-    -- содержимое миграции
+    local helpers = require('tt-migrations.helpers')
+
+    local function apply()
+        box.schema.space.create('bands', {
+            if_not_exists = true,
+            format = {
+                { name = 'id', type = 'integer' },
+                { name = 'bucket_id', type = 'unsigned' },
+                { name = 'band_name', type = 'string' },
+                { name = 'year', type = 'integer' }
+            },
+        })
+        box.space.bands:create_index('primary_key', { parts = {'id'}, if_not_exists = true})
+        box.space.bands:create_index('bucket_id', { parts = {'bucket_id'}, unique = false, if_not_exists = true})
+        helpers.register_sharding_key('bands', {'id'})
+
+        return true
+    end
+
+    return {
+        apply = {
+            scenario = apply,
+        }
+    }
   002_update.lua: |
     -- содержимое
 ```
@@ -281,4 +304,3 @@ docker run --rm \
 - Миграции должны лежать непосредственно в `MIGRATIONS_DIR` (без поддиректорий).
 - Для хранения конфиденциальных данных используйте переменные окружения или Kubernetes Secrets.
 - Убедитесь, что в образе есть Python 3 и бинарный файл `tt`, скопированный из дистрибутива Tarantool EE.
-```
